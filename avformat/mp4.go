@@ -1,7 +1,7 @@
 package avformat
 
 import (
-	"../util"
+	"github.com/sevenzoe/gortmp/util"
 )
 
 type MP4 interface {

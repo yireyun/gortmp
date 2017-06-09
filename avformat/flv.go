@@ -1,14 +1,15 @@
 package avformat
 
 import (
-	//"../rtmplog"
-	"../util"
+	//"github.com/sevenzoe/gortmp/rtmplog"
 	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"time"
+
+	"github.com/sevenzoe/gortmp/util"
 )
 
 const (

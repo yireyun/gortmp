@@ -1,8 +1,8 @@
 package rtmp
 
 import (
-	//"../config"
-	//"../util"
+	//"github.com/sevenzoe/gortmp/config"
+	//"github.com/sevenzoe/gortmp/util"
 	"fmt"
 	//"strings"
 	//"os"

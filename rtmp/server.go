@@ -75,6 +75,7 @@ func (s *Server) loop(listener net.Listener) error {
 
 		tempDelay = 0
 		c := newRtmpNetConnect(conn, s)
+		c.hand1er = s.Handler
 		go s.serve(c)
 	}
 }
@@ -103,6 +104,8 @@ func (s *Server) serve(rtmpNetConn *RtmpNetConnection) {
 		rtmpNetConn.Close()
 		return
 	}
+
+	fmt.Printf("%v\n", msg.String())
 
 	connect, ok := msg.(*ConnectMessage) // 收到 connect 消息
 	if !ok || connect.CommandName != "connect" {

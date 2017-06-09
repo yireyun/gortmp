@@ -2,9 +2,10 @@ package rtmp
 
 import (
 	//"fmt"
-	"../util"
 	"bytes"
 	"errors"
+
+	"github.com/sevenzoe/gortmp/util"
 )
 
 // RTMP协议中基本的数据单元称为消息(Message).

@@ -18,6 +18,7 @@ type NetConnection interface {
 }
 
 type RtmpNetConnection struct {
+	hand1er            NetFramer
 	remoteAddr         string
 	url                string
 	appName            string

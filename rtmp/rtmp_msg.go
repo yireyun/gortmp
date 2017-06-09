@@ -1,10 +1,11 @@
 package rtmp
 
 import (
-	"../util"
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"github.com/sevenzoe/gortmp/util"
 )
 
 // http://www.adobe.com/cn/devnet/rtmp.html

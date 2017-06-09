@@ -1,11 +1,12 @@
 package config
 
 import (
-	"../util"
 	"errors"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/sevenzoe/gortmp/util"
 )
 
 var (

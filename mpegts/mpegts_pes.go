@@ -1,13 +1,14 @@
 package mpegts
 
 import (
-	"../avformat"
-	"../util"
 	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"github.com/sevenzoe/gortmp/avformat"
+	"github.com/sevenzoe/gortmp/util"
 )
 
 // ios13818-1-CN.pdf 45/166

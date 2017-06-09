@@ -1,13 +1,14 @@
 package rtmp
 
 import (
-	"../avformat"
-	//"../config"
-	"../hls"
-	"../mpegts"
-	"../util"
+	"github.com/sevenzoe/gortmp/avformat"
+	//"github.com/sevenzoe/gortmp/config"
 	"bytes"
 	"errors"
+
+	"github.com/sevenzoe/gortmp/hls"
+	"github.com/sevenzoe/gortmp/mpegts"
+	"github.com/sevenzoe/gortmp/util"
 	//"fmt"
 	"io"
 	"os"

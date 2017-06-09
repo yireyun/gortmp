@@ -6,6 +6,7 @@ import (
 )
 
 type ServerHandler interface {
+	NetFramer
 	OnPublishing(s *RtmpNetStream) error
 	OnPlaying(s *RtmpNetStream) error
 	OnClosed(s *RtmpNetStream)
@@ -13,6 +14,10 @@ type ServerHandler interface {
 }
 
 type DefaultServerHandler struct {
+}
+
+func (p *DefaultServerHandler) OnRecvFrame(frame *NetFrame) {
+	//收到网络数据帧事件
 }
 
 // 发布者成功发布流后,就启动广播
