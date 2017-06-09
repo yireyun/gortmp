@@ -27,7 +27,14 @@ type ServerHandler struct {
 func (p *ServerHandler) OnRecvFrame(frame *rtmp.NetFrame) {
 	p.frameCnt++
 	//收到网络数据帧事件
-	//fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\n", p.frameCnt, frame.FMT, frame.CSID, len(frame.Data))
+	//	dateLen := int32(len(frame.Data))
+	//	fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
+	//		"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
+	//		"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
+	//		p.frameCnt, frame.FMT, frame.CSID, frame.Timestamp,
+	//		frame.MsgLength, frame.MsgTypeID, frame.StreamID,
+	//		frame.ExTimestamp, dateLen, frame.HeadLength, dateLen-int32(frame.HeadLength)-int32(frame.MsgLength))
+
 	wsPool.PushRtmpNetFrame(frame)
 }
 

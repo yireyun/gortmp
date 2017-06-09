@@ -23,6 +23,7 @@ type WsStat struct {
 	wscAddr   string
 	frameC    chan *rtmp.NetFrame
 	isClosed  bool
+	isFMT0    bool //表示首帧以推送
 	sendTimes int
 	sendSize  int
 	recvTimes int
@@ -37,7 +38,7 @@ func NewStat(wsc *ws.Conn) *WsStat {
 	}
 }
 
-func (c *WsStat) recvLoop() {
+func (c *WsStat) recvLoop(removeC chan *ws.Conn) {
 	defer func() {
 		if x := recover(); x != nil {
 			fmt.Printf("WebSocket [%v] RecvLoop Error: %v\n", c.wscAddr, x)
@@ -56,7 +57,7 @@ func (c *WsStat) recvLoop() {
 	}
 }
 
-func (c *WsStat) pushLoop() {
+func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 	defer func() {
 		if x := recover(); x != nil {
 			fmt.Printf("WebSocket [%v] PushLoop Error: %v\n", c.wscAddr, x)
@@ -69,7 +70,9 @@ func (c *WsStat) pushLoop() {
 		case <-pingTicker.C:
 			c.wsc.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.wsc.WriteMessage(ws.PingMessage, []byte{}); err != nil {
-				return
+				fmt.Printf("WebSocket [%v] PingMessage Error: %v\n", c.wscAddr, err)
+			} else {
+				fmt.Printf("WebSocket [%v] PingMessage Success\n", c.wscAddr)
 			}
 		case frame, ok := <-c.frameC:
 			if !ok {
@@ -77,7 +80,17 @@ func (c *WsStat) pushLoop() {
 				c.wsc.Close()
 				c.isClosed = true
 			} else {
-				if frame != nil {
+				if !c.isFMT0 && frame.FMT != 0 {
+					dateLen := int32(len(frame.Data))
+					fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
+						"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
+						"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
+						c.sendTimes, frame.FMT, frame.CSID, frame.Timestamp,
+						frame.MsgLength, frame.MsgTypeID, frame.StreamID,
+						frame.ExTimestamp, dateLen, frame.HeadLength, dateLen-int32(frame.HeadLength)-int32(frame.MsgLength))
+				}
+				if frame != nil && (c.isFMT0 || frame.FMT == 0) {
+					c.isFMT0 = true
 					err := c.wsc.WriteMessage(ws.BinaryMessage, frame.Data)
 					if err != nil {
 						fmt.Printf("WebSocket [%v] Push Frame Error: %v\n", c.wscAddr, err)
@@ -86,13 +99,13 @@ func (c *WsStat) pushLoop() {
 					} else {
 						c.sendTimes++
 						c.sendSize += len(frame.Data)
-						//						if c.sendTimes%5 == 0 {
-						//							fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\n",
-						//								c.sendTimes, frame.FMT, frame.CSID, len(frame.Data))
-						//						} else {
-						//							fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\t",
-						//								c.sendTimes, frame.FMT, frame.CSID, len(frame.Data))
-						//						}
+						//if c.sendTimes%5 == 0 {
+						//	fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\n",
+						//	c.sendTimes, frame.FMT, frame.CSID, len(frame.Data))
+						//} else {
+						//	fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\t",
+						//	c.sendTimes, frame.FMT, frame.CSID, len(frame.Data))
+						//}
 						if c.sendTimes%100 == 0 {
 							fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\n",
 								c.sendTimes, frame.FMT, frame.CSID, c.sendSize)
@@ -115,16 +128,18 @@ func (c *WsStat) pushLoop() {
 	}
 }
 
-func (c *WsStat) RecvLoop() {
+func (c *WsStat) RecvLoop(removeC chan *ws.Conn) {
 	for !c.isClosed {
-		c.recvLoop()
+		c.recvLoop(removeC)
 	}
+	removeC <- c.wsc
 }
 
-func (c *WsStat) PushLoop() {
+func (c *WsStat) PushLoop(removeC chan *ws.Conn) {
 	for !c.isClosed {
-		c.pushLoop()
+		c.pushLoop(removeC)
 	}
+	removeC <- c.wsc
 }
 
 type WsPool struct {
@@ -164,8 +179,8 @@ func (p *WsPool) doFor() {
 				if !exist {
 					stat := NewStat(wsc)
 					p.wscm[wsc] = stat
-					go stat.PushLoop()
-					go stat.RecvLoop()
+					go stat.PushLoop(p.removeC)
+					go stat.RecvLoop(p.removeC)
 				}
 				p.mu.Unlock()
 				fmt.Printf("Append WebSocket Conn: %v\n", wsc.RemoteAddr().String())

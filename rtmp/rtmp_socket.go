@@ -698,7 +698,7 @@ func sendAVMessage(conn *RtmpNetConnection, av *AVPacket, isAudio bool, isFirst 
 func readChunk(conn *RtmpNetConnection) (msg RtmpMessage, err error) {
 	var frame = GetFrame()
 	head, err := conn.br.ReadByte()
-	frame.Append(head)
+	frame.Append(head, 1)
 	conn.readSeqNum += 1
 	if err != nil {
 		return nil, err
@@ -707,12 +707,12 @@ func readChunk(conn *RtmpNetConnection) (msg RtmpMessage, err error) {
 	cbh := new(ChunkBasicHeader)
 	cbh.ChunkStreamID = uint32(head & 0x3f) // 0011 1111
 	cbh.ChunkType = (head & 0xc0) >> 6      // 1100 0000
+	FMT := (head & 0xc0) >> 6               // 1100 0000
 	// 如果块流ID为0,1的话,就需要计算.
 	cbh.ChunkStreamID, err = readChunkStreamID(conn, cbh.ChunkStreamID, frame)
 	if err != nil {
 		return nil, errors.New("get chunk stream id error :" + err.Error())
 	}
-	frame.Assign(cbh)
 
 	if conn.rtmpHeader[cbh.ChunkStreamID] == nil {
 		//conn.rtmpHeader[cbh.ChunkStreamID] = &RtmpHeader{ChunkBasicHeader.ChunkType: cbh.ChunkType, ChunkBasicHeader.ChunkStreamID: cbh.ChunkStreamID}
@@ -746,12 +746,14 @@ func readChunk(conn *RtmpNetConnection) (msg RtmpMessage, err error) {
 	if err != nil {
 		return nil, err
 	}
-	frame.Appends(buf)
+	frame.Appends(buf, 0)
 	conn.readSeqNum += uint32(n)
 
 	buf = append(conn.incompleteRtmpBody[cbh.ChunkStreamID], buf...)
 	conn.incompleteRtmpBody[cbh.ChunkStreamID] = buf
 
+	frame.Assign(h)
+	frame.FMT = FMT
 	conn.hand1er.OnRecvFrame(frame)
 
 	// 如果读完了一个完整的块,那么就返回这个消息,没读完继续递归读块.
@@ -777,7 +779,7 @@ func readChunkStreamID(conn *RtmpNetConnection, csid uint32, frame *NetFrame) (c
 	case 0:
 		{
 			u8, err := conn.br.ReadByte()
-			frame.Append(u8)
+			frame.Append(u8, 1)
 			conn.readSeqNum += 1
 			if err != nil {
 				return 0, err
@@ -788,11 +790,10 @@ func readChunkStreamID(conn *RtmpNetConnection, csid uint32, frame *NetFrame) (c
 	case 1:
 		{
 			u16 := make([]byte, 2)
-			frame.Appends(u16)
 			if _, err = io.ReadFull(conn.br, u16); err != nil {
 				return
 			}
-
+			frame.Appends(u16, 2)
 			conn.readSeqNum += 2
 			chunkStreamID = 64 + uint32(u16[0]) + 256*uint32(u16[1])
 		}
@@ -812,7 +813,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if _, err := io.ReadFull(conn.br, b); err != nil {
 				return nil, err
 			}
-			frame.Appends(b)
+			frame.Appends(b, 3)
 			conn.readSeqNum += 3
 			h.ChunkMessgaeHeader.Timestamp = util.BigEndian.Uint24(b) //type = 0的时间戳为绝对时间,其他的都为相对时间
 
@@ -820,7 +821,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if _, err = io.ReadFull(conn.br, b); err != nil { // 读取Message Length,这里的长度指的是一条信令或者一帧视频数据或音频数据的长度,而不是Chunk data的长度.
 				return nil, err
 			}
-			frame.Appends(b)
+			frame.Appends(b, 3)
 			conn.readSeqNum += 3
 			h.ChunkMessgaeHeader.MessageLength = util.BigEndian.Uint24(b)
 
@@ -829,7 +830,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if err != nil {
 				return nil, err
 			}
-			frame.Append(v)
+			frame.Append(v, 1)
 			conn.readSeqNum += 1
 			h.ChunkMessgaeHeader.MessageTypeID = v
 
@@ -838,7 +839,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if _, err = io.ReadFull(conn.br, bb); err != nil { // 读取Message Stream ID
 				return nil, err
 			}
-			frame.Appends(bb)
+			frame.Appends(bb, 4)
 			conn.readSeqNum += 4
 			h.ChunkMessgaeHeader.MessageStreamID = util.LittleEndian.Uint32(bb)
 
@@ -847,7 +848,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 				if _, err = io.ReadFull(conn.br, bb); err != nil {
 					return nil, err
 				}
-				frame.Appends(bb)
+				frame.Appends(bb, 4)
 				conn.readSeqNum += 4
 				h.ChunkExtendedTimestamp.ExtendTimestamp = util.BigEndian.Uint32(bb)
 			}
@@ -859,7 +860,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if _, err = io.ReadFull(conn.br, b); err != nil {
 				return nil, err
 			}
-			frame.Appends(b)
+			frame.Appends(b, 3)
 			conn.readSeqNum += 3
 			h.ChunkBasicHeader.ChunkType = chunkType
 			h.ChunkMessgaeHeader.Timestamp = util.BigEndian.Uint24(b)
@@ -868,7 +869,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if _, err = io.ReadFull(conn.br, b); err != nil {
 				return nil, err
 			}
-			frame.Appends(b)
+			frame.Appends(b, 3)
 			conn.readSeqNum += 3
 			h.ChunkMessgaeHeader.MessageLength = util.BigEndian.Uint24(b)
 
@@ -877,7 +878,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if err != nil {
 				return nil, err
 			}
-			frame.Append(v)
+			frame.Append(v, 1)
 			conn.readSeqNum += 1
 			h.ChunkMessgaeHeader.MessageTypeID = v
 
@@ -887,7 +888,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 				if _, err := io.ReadFull(conn.br, bb); err != nil {
 					return nil, err
 				}
-				frame.Appends(bb)
+				frame.Appends(bb, 4)
 				conn.readSeqNum += 4
 				h.ChunkExtendedTimestamp.ExtendTimestamp = util.BigEndian.Uint32(bb)
 			}
@@ -899,7 +900,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 			if _, err = io.ReadFull(conn.br, b); err != nil {
 				return nil, err
 			}
-			frame.Appends(b)
+			frame.Appends(b, 3)
 			conn.readSeqNum += 3
 			h.ChunkBasicHeader.ChunkType = chunkType
 			h.ChunkMessgaeHeader.Timestamp = util.BigEndian.Uint24(b)
@@ -910,7 +911,7 @@ func readChunkType(conn *RtmpNetConnection, h *RtmpHeader, chunkType byte, frame
 				if _, err := io.ReadFull(conn.br, bb); err != nil {
 					return nil, err
 				}
-				frame.Appends(bb)
+				frame.Appends(bb, 4)
 				conn.readSeqNum += 4
 				h.ChunkExtendedTimestamp.ExtendTimestamp = util.BigEndian.Uint32(bb)
 			}

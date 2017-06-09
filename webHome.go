@@ -26,8 +26,8 @@ var (
 	addr      = flag.String("addr", ":8080", "http service address")
 	homeTempl = template.Must(template.ParseFiles("home.html"))
 	upgrader  = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+		ReadBufferSize:  2046,
+		WriteBufferSize: 2046,
 	}
 )
 
