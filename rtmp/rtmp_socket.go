@@ -3,11 +3,10 @@ package rtmp
 import (
 	"errors"
 	"fmt"
-
-	"github.com/sevenzoe/gortmp/util"
-	//"fmt"
 	"io"
-	//"reflect"
+
+	"github.com/sevenzoe/gortmp/config"
+	"github.com/sevenzoe/gortmp/util"
 )
 
 const (
@@ -91,7 +90,9 @@ func recvMessage(conn *RtmpNetConnection) (msg RtmpMessage, err error) {
 	// 然后继续读取下一个消息.如果不是用户控制消息,就将消息返回就好.
 	messageType := msg.Header().ChunkMessgaeHeader.MessageTypeID
 	if RTMP_MSG_CHUNK_SIZE <= messageType && messageType <= RTMP_MSG_EDGE {
-		fmt.Printf("%v\n ", msg.String())
+		if config.DebugMode {
+			fmt.Printf("%v\n ", msg.String())
+		}
 		switch messageType {
 		case RTMP_MSG_CHUNK_SIZE:
 			{
