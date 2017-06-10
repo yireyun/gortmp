@@ -7,6 +7,7 @@ import (
 	"syscall"
 	//"fmt"
 	//"os"
+	"encoding/hex"
 	"net/http"
 	"sync"
 	"time"
@@ -17,7 +18,12 @@ import (
 	//"github.com/sevenzoe/gortmp/mpegts"
 )
 
-var wsPool = NewWsPool()
+const isTrac = false
+
+var (
+	tracRv *os.File
+	wsPool = NewWsPool()
+)
 
 type ServerHandler struct {
 	frameCnt int
@@ -25,15 +31,23 @@ type ServerHandler struct {
 }
 
 func (p *ServerHandler) OnRecvFrame(frame *rtmp.NetFrame) {
+	if isTrac {
+		if p.frameCnt <= 100 {
+			tracRv.Write([]byte(hex.EncodeToString(frame.Data)))
+			tracRv.Write([]byte("\n"))
+		}
+	}
+
 	p.frameCnt++
+
 	//收到网络数据帧事件
-	//	dateLen := int32(len(frame.Data))
-	//	fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
-	//		"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
-	//		"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
-	//		p.frameCnt, frame.FMT, frame.CSID, frame.Timestamp,
-	//		frame.MsgLength, frame.MsgTypeID, frame.StreamID,
-	//		frame.ExTimestamp, dateLen, frame.HeadLength, dateLen-int32(frame.HeadLength)-int32(frame.MsgLength))
+	dateLen := int32(len(frame.Data))
+	fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
+		"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
+		"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
+		p.frameCnt, frame.FMT, frame.CSID, frame.Timestamp,
+		frame.MsgLength, frame.MsgTypeID, frame.StreamID,
+		frame.ExTimestamp, dateLen, frame.HeadLength, dateLen-int32(frame.HeadLength)-int32(frame.MsgLength))
 
 	wsPool.PushRtmpNetFrame(frame)
 }
@@ -50,6 +64,10 @@ func ListenAndServe(addr string) error {
 	return s.ListenAndServer()
 }
 
+func pathJs(w http.ResponseWriter, r *http.Request) {
+	http.FileServer(http.Dir("./js")).ServeHTTP(w, r)
+}
+
 func main() {
 	var err error
 
@@ -59,14 +77,15 @@ func main() {
 
 	go wsPool.Run()
 
-	l := ":1935"
-	err = ListenAndServe(l)
+	err = ListenAndServe(":1935")
 	if err != nil {
 		panic(err)
 	}
 
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", serveWs)
+	http.Handle("/js/", http.FileServer(http.Dir("./")))
+	//	http.HandleFunc("/js/", pathJs)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
 		panic(err)
 	}
@@ -86,4 +105,10 @@ func InitAppConfig() (err error) {
 	}
 
 	return
+}
+
+func init() {
+	if isTrac {
+		tracRv, _ = os.Create("./tracRv.txt")
+	}
 }

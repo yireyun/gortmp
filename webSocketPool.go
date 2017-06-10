@@ -2,7 +2,9 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -16,6 +18,10 @@ const (
 
 	// Send pings to client with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
+)
+
+var (
+	tracWs *os.File
 )
 
 type WsStat struct {
@@ -91,6 +97,12 @@ func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 				}
 				if frame != nil && (c.isFMT0 || frame.FMT == 0) {
 					c.isFMT0 = true
+					if isTrac {
+						if c.sendTimes <= 100 {
+							tracWs.Write([]byte(hex.EncodeToString(frame.Data)))
+							tracWs.Write([]byte("\n"))
+						}
+					}
 					c.wsc.SetWriteDeadline(time.Now().Add(writeWait))
 					err := c.wsc.WriteMessage(ws.BinaryMessage, frame.Data)
 					if err != nil {
@@ -253,4 +265,10 @@ func (p *WsPool) WsCount() int {
 	cnt := len(p.wscm)
 	p.mu.Unlock()
 	return cnt
+}
+
+func init() {
+	if isTrac {
+		tracWs, _ = os.Create("./tracWs.txt")
+	}
 }
