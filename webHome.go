@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"text/template"
@@ -45,6 +46,11 @@ func reader(ws *websocket.Conn) {
 }
 
 func serveWs(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	fmt.Printf("Origin: %v\n", origin)
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {

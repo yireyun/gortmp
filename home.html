@@ -2,41 +2,58 @@
 <html lang="en">
 <head>
 <title>Chat Example</title>
-<script src="//code.jquery.com/jquery-3.1.0.min.js"></script>
 <script type="text/javascript">
-    $(function() {
-
+window.onload = function () {
     var conn;
-    var msg = $("#msg");
-    var log = $("#log");
+    var msg = document.getElementById("msg");
+    var log = document.getElementById("log");
 	var recvsize = 0;
 	var recvCount = 0
-	
-    function appendLog(msg) {
-        var d = log[0]
-        var doScroll = d.scrollTop == d.scrollHeight - d.clientHeight;
-        msg.appendTo(log)
+
+
+    function appendLog(item) {
+        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+        log.appendChild(item);
         if (doScroll) {
-            d.scrollTop = d.scrollHeight - d.clientHeight;
+            log.scrollTop = log.scrollHeight - log.clientHeight;
         }
     }
 
-    if (window["WebSocket"]) {
-        conn = new WebSocket("ws://{{$}}/ws");
-        conn.onclose = function(evt) {
-            appendLog($("<div><b>Connection closed.</b></div>"))
+    document.getElementById("form").onsubmit = function () {
+        if (!conn) {
+            return false;
         }
-        conn.onmessage = function(evt) {
-			recvCount++;
+        if (!msg.value) {
+            return false;
+        }
+        conn.send(msg.value);
+        msg.value = "";
+        return false;
+    };
+
+    if (window["WebSocket"]) {
+        //conn = new WebSocket("ws://" + document.location.host + "/live/ws");		
+		conn = new WebSocket("ws://192.168.1.81:8080/live/ws");
+        conn.onclose = function (evt) {
+            var item = document.createElement("div");
+            item.innerHTML = "<b>Connection closed.</b>";
+            appendLog(item);
+        };
+        conn.onmessage = function (evt) {
+            recvCount++;
 			recvsize += evt.data.size;
 			if (recvCount % 100 == 0 ){
-				appendLog($("<div/>").text(recvsize))
+				var item = document.createElement("div");
+           		item.innerText = recvsize;
+				appendLog(item)
 			}
-        }
+        };
     } else {
-        appendLog($("<div><b>Your browser does not support WebSockets.</b></div>"))
+        var item = document.createElement("div");
+        item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+        appendLog(item);
     }
-    });
+};
 </script>
 <style type="text/css">
 html {

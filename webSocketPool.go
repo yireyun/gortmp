@@ -88,7 +88,7 @@ func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 			} else {
 				if !c.isFMT0 && frame.FMT != 0 {
 					dateLen := int32(len(frame.Data))
-					fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
+					fmt.Printf("DROP:<%v>:{FMT: %v, CSID: %v}, "+
 						"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
 						"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
 						c.sendTimes, frame.FMT, frame.CSID, frame.Timestamp,
@@ -97,7 +97,7 @@ func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 				}
 				if frame != nil && (c.isFMT0 || frame.FMT == 0) {
 					c.isFMT0 = true
-					if isTrac {
+					if isTracFrameData {
 						if c.sendTimes <= 100 {
 							tracWs.Write([]byte(hex.EncodeToString(frame.Data)))
 							if c.sendTimes == 100 {
@@ -116,16 +116,9 @@ func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 					} else {
 						c.sendTimes++
 						c.sendSize += len(frame.Data)
-						//if c.sendTimes%5 == 0 {
-						//	fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\n",
-						//	c.sendTimes, frame.FMT, frame.CSID, len(frame.Data))
-						//} else {
-						//	fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\t",
-						//	c.sendTimes, frame.FMT, frame.CSID, len(frame.Data))
-						//}
 						if c.sendTimes%100 == 0 {
-							fmt.Printf("<%v>:{FMT: %v, CSID: %v, Size: %v}\n",
-								c.sendTimes, frame.FMT, frame.CSID, c.sendSize)
+							fmt.Printf("{Addr: %v} :<%v>: {FMT: %v, CSID: %v, Size: %v}\n",
+								c.wscAddr, c.sendTimes, frame.FMT, frame.CSID, c.sendSize)
 						}
 					}
 				}
@@ -272,7 +265,7 @@ func (p *WsPool) WsCount() int {
 }
 
 func init() {
-	if isTrac {
+	if isTracFrameData {
 		tracWs, _ = os.Create("./tracWs.txt")
 	}
 }

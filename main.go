@@ -18,7 +18,10 @@ import (
 	//"github.com/sevenzoe/gortmp/mpegts"
 )
 
-const isTrac = true
+const (
+	isTracFrameData = false
+	isTracFrameInfo = true
+)
 
 var (
 	tracRv *os.File
@@ -31,7 +34,7 @@ type ServerHandler struct {
 }
 
 func (p *ServerHandler) OnRecvFrame(frame *rtmp.NetFrame) {
-	if isTrac {
+	if isTracFrameData {
 		if p.frameCnt <= 100 {
 			tracRv.Write([]byte(hex.EncodeToString(frame.Data)))
 			if p.frameCnt == 100 {
@@ -41,18 +44,18 @@ func (p *ServerHandler) OnRecvFrame(frame *rtmp.NetFrame) {
 			}
 		}
 	}
-
-	p.frameCnt++
+	if isTracFrameInfo {
+		dateLen := int32(len(frame.Data))
+		fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
+			"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
+			"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
+			p.frameCnt, frame.FMT, frame.CSID, frame.Timestamp,
+			frame.MsgLength, frame.MsgTypeID, frame.StreamID,
+			frame.ExTimestamp, dateLen, frame.HeadLength, dateLen-int32(frame.HeadLength)-int32(frame.MsgLength))
+	}
 
 	//收到网络数据帧事件
-	dateLen := int32(len(frame.Data))
-	fmt.Printf("<%v>:{FMT: %v, CSID: %v}, "+
-		"{Timestamp: %6v, MsgLength: %4v, MsgTypeID: %v, StreamID: %v, ExTimestamp: %v}, "+
-		"{DataLen: %4v, HeadLen: %4v, MissLen: %4v}\n",
-		p.frameCnt, frame.FMT, frame.CSID, frame.Timestamp,
-		frame.MsgLength, frame.MsgTypeID, frame.StreamID,
-		frame.ExTimestamp, dateLen, frame.HeadLength, dateLen-int32(frame.HeadLength)-int32(frame.MsgLength))
-
+	p.frameCnt++
 	wsPool.PushRtmpNetFrame(frame)
 }
 
@@ -66,10 +69,6 @@ func ListenAndServe(addr string) error {
 		WriteTimout: time.Duration(time.Second * 15), // timeout
 		Lock:        new(sync.Mutex)}                 // lock
 	return s.ListenAndServer()
-}
-
-func pathJs(w http.ResponseWriter, r *http.Request) {
-	http.FileServer(http.Dir("./js")).ServeHTTP(w, r)
 }
 
 func main() {
@@ -87,7 +86,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", serveHome)
-	http.HandleFunc("/ws", serveWs)
+	http.HandleFunc("/live/ws", serveWs)
 	http.Handle("/js/", http.FileServer(http.Dir("./")))
 	//	http.HandleFunc("/js/", pathJs)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
@@ -112,7 +111,7 @@ func InitAppConfig() (err error) {
 }
 
 func init() {
-	if isTrac {
+	if isTracFrameData {
 		tracRv, _ = os.Create("./tracRv.txt")
 	}
 }
