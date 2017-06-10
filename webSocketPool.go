@@ -100,7 +100,11 @@ func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 					if isTrac {
 						if c.sendTimes <= 100 {
 							tracWs.Write([]byte(hex.EncodeToString(frame.Data)))
-							tracWs.Write([]byte("\n"))
+							if c.sendTimes == 100 {
+								tracWs.Close()
+							} else {
+								tracWs.Write([]byte("\n"))
+							}
 						}
 					}
 					c.wsc.SetWriteDeadline(time.Now().Add(writeWait))

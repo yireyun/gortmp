@@ -18,7 +18,7 @@ import (
 	//"github.com/sevenzoe/gortmp/mpegts"
 )
 
-const isTrac = false
+const isTrac = true
 
 var (
 	tracRv *os.File
@@ -34,7 +34,11 @@ func (p *ServerHandler) OnRecvFrame(frame *rtmp.NetFrame) {
 	if isTrac {
 		if p.frameCnt <= 100 {
 			tracRv.Write([]byte(hex.EncodeToString(frame.Data)))
-			tracRv.Write([]byte("\n"))
+			if p.frameCnt == 100 {
+				tracRv.Close()
+			} else {
+				tracRv.Write([]byte("\n"))
+			}
 		}
 	}
 
