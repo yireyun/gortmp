@@ -20,7 +20,7 @@ import (
 
 const (
 	isTracFrameData = false
-	isTracFrameInfo = true
+	isTracFrameInfo = false
 )
 
 var (
@@ -86,6 +86,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", serveHome)
+	http.HandleFunc("/live/", liveWs)
 	http.HandleFunc("/live/ws", serveWs)
 	http.Handle("/js/", http.FileServer(http.Dir("./")))
 	//	http.HandleFunc("/js/", pathJs)

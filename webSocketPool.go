@@ -30,6 +30,7 @@ type WsStat struct {
 	frameC    chan *rtmp.NetFrame
 	isClosed  bool
 	isFMT0    bool //表示首帧以推送
+	isPlay    bool //开始播放
 	sendTimes int
 	sendSize  int
 	recvTimes int
@@ -58,6 +59,7 @@ func (c *WsStat) recvLoop(removeC chan *ws.Conn) {
 			c.isClosed = true
 		} else {
 			fmt.Printf("WebSocket [%v] RecvLoop: {msgType:%v, msgData:[%x]}\n", c.wscAddr, msgType, msgData)
+			c.isPlay = true
 		}
 
 	}
@@ -216,7 +218,7 @@ func (p *WsPool) doFor() {
 				pushCnt := 0
 				p.mu.Lock()
 				for _, stat := range p.wscm {
-					if !stat.isClosed {
+					if !stat.isClosed && stat.isPlay {
 						stat.frameC <- frame
 						frame.Refs(1)
 						pushCnt++
