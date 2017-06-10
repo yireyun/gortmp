@@ -91,6 +91,7 @@ func (c *WsStat) pushLoop(removeC chan *ws.Conn) {
 				}
 				if frame != nil && (c.isFMT0 || frame.FMT == 0) {
 					c.isFMT0 = true
+					c.wsc.SetWriteDeadline(time.Now().Add(writeWait))
 					err := c.wsc.WriteMessage(ws.BinaryMessage, frame.Data)
 					if err != nil {
 						fmt.Printf("WebSocket [%v] Push Frame Error: %v\n", c.wscAddr, err)
