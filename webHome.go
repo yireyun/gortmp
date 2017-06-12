@@ -45,6 +45,7 @@ func reader(ws *websocket.Conn) {
 }
 
 func liveWs(w http.ResponseWriter, r *http.Request) {
+	r.Header.Del("Origin")
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
@@ -56,7 +57,7 @@ func liveWs(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveWs(w http.ResponseWriter, r *http.Request) {
-
+	r.Header.Del("Origin")
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {

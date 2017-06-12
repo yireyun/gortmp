@@ -191,6 +191,7 @@ func (p *WsPool) doFor() {
 				if !exist {
 					stat := NewStat(wsc)
 					p.wscm[wsc] = stat
+					//stat.isPlay = true
 					go stat.PushLoop(p.removeC)
 					go stat.RecvLoop(p.removeC)
 				}
